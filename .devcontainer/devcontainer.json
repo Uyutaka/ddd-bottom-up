@@ -1,0 +1,17 @@
+{
+	"name": "Go Env",
+	// Dockerfileでイメージ・コンテナを作成
+	"dockerFile": "Dockerfile",
+	// リモート先のVS Codeにインストールする拡張機能
+	"extensions": [
+		// common
+		"WakaTime.vscode-wakatime",
+		"leodevbro.blockman",
+		"streetsidesoftware.code-spell-checker",
+		"github.vscode-github-actions",
+		"GitHub.copilot",
+		// go lang
+		"golang.go",
+		"premparihar.gotestexplorer",
+	]
+}
