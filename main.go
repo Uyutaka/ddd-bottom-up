@@ -19,11 +19,13 @@ type (
 		V string
 	}
 
+	// Aggregate Root
 	User struct {
 		Id   UserId
 		Name UserName
 	}
 
+	// Aggregate Root
 	Circle struct {
 		id      CircleId
 		name    CircleName
@@ -223,11 +225,30 @@ func (cas *CircleApplicationService) Join(command CircleJoinCommand) bool {
 		return false
 	}
 
+	// This violates Law of Demeter (See List 12.2 & Chap 12.1.2)
 	circle.members = append(circle.members, member)
+
 	cas.circleRepository.Save(circle)
 	return true
 	// TX Ends
 
+}
+
+func (c *Circle) Join(member User) bool {
+	if len(member.Name.V) == 0 {
+		return false
+	}
+
+	if c.IsFull() {
+		return false
+	}
+
+	c.members = append(c.members, member)
+	return true
+}
+
+func (c *Circle) IsFull() bool {
+	return len(c.members) >= 29
 }
 
 func NewCircleJoinCommand(userId string, circleId string) CircleJoinCommand {
