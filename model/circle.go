@@ -1,5 +1,9 @@
 package model
 
+import (
+	"time"
+)
+
 type (
 	CircleId struct {
 		V string
@@ -20,6 +24,7 @@ type (
 		Save(circle Circle) error
 		FindById(id CircleId) (Circle, error)
 		FindByName(name CircleName) (Circle, error)
+		FindRecommended(time time.Time) ([]Circle, error)
 	}
 
 	ICircleFactory interface {
@@ -40,11 +45,16 @@ type (
 		circleRepository ICircleRepository
 		circleService    CircleService
 		userRepository   IUserRepository
+		now              time.Time
 	}
 
 	CircleJoinCommand struct {
 		userId   string
 		circleId string
+	}
+
+	CircleFullSpecification struct {
+		repo IUserRepository
 	}
 )
 
@@ -88,12 +98,13 @@ func NewCircleCreateCommand(userId string, userName string) CircleCreateCommand 
 	return CircleCreateCommand{userId: userId, name: userName}
 }
 
-func NewCircleApplicationService(circleFactory ICircleFactory, circleRepository ICircleRepository, circleService CircleService, userRepository IUserRepository) CircleApplicationService {
+func NewCircleApplicationService(circleFactory ICircleFactory, circleRepository ICircleRepository, circleService CircleService, userRepository IUserRepository, now time.Time) CircleApplicationService {
 	return CircleApplicationService{
 		circleFactory:    circleFactory,
 		circleRepository: circleRepository,
 		circleService:    circleService,
 		userRepository:   userRepository,
+		now:              now,
 	}
 }
 
@@ -126,7 +137,7 @@ func (cas *CircleApplicationService) Join(command CircleJoinCommand) bool {
 
 	memberId, _ := NewUserId(command.userId)
 
-	_, err := cas.userRepository.Find(memberId)
+	user, err := cas.userRepository.Find(memberId)
 
 	if err != nil {
 		return false
@@ -138,12 +149,16 @@ func (cas *CircleApplicationService) Join(command CircleJoinCommand) bool {
 		return false
 	}
 
-	if len(circle.members) >= 29 {
+	cfs := NewCircleFullSpecification(cas.userRepository)
+	if cfs.IsSatisfiedBy(circle) {
 		return false
 	}
 
 	// This violates Law of Demeter (See List 12.2 & Chap 12.1.2)
-	circle.members = append(circle.members, memberId)
+	// circle.members = append(circle.members, memberId)
+	if !circle.Join(user) {
+		return false
+	}
 
 	cas.circleRepository.Save(circle)
 	return true
@@ -174,4 +189,18 @@ func (c *Circle) CountMembers() int {
 
 func NewCircleJoinCommand(userId string, circleId string) CircleJoinCommand {
 	return CircleJoinCommand{userId: userId, circleId: circleId}
+}
+
+func NewCircleFullSpecification(repo IUserRepository) CircleFullSpecification {
+	return CircleFullSpecification{repo: repo}
+}
+
+func (cfs *CircleFullSpecification) IsSatisfiedBy(circle Circle) bool {
+	owner, _ := cfs.repo.Find(circle.owner)
+	upperLimit := 30
+	if owner.IsPremium() {
+		upperLimit = 50
+	}
+
+	return circle.CountMembers() >= upperLimit
 }

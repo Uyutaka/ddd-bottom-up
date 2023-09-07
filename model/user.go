@@ -1,5 +1,9 @@
 package model
 
+import (
+	"math/rand"
+)
+
 type (
 	UserName struct {
 		V string
@@ -82,4 +86,8 @@ func (u *User) ChangeUserName(name string) bool {
 	userName, _ := NewUserName(name)
 	u.Name = userName
 	return true
+}
+
+func (u *User) IsPremium() bool {
+	return rand.Float32() < 0.5
 }
