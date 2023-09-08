@@ -18,13 +18,16 @@ type (
 		name    CircleName
 		owner   UserId
 		members []UserId
+		created time.Time
 	}
 
 	ICircleRepository interface {
 		Save(circle Circle) error
 		FindById(id CircleId) (Circle, error)
 		FindByName(name CircleName) (Circle, error)
-		FindRecommended(time time.Time) ([]Circle, error)
+		// ng because condition of searching circles is not in repository of domain model
+		// FindRecommended(time time.Time) ([]Circle, error)
+		FindAll() ([]Circle, error)
 	}
 
 	ICircleFactory interface {
@@ -55,6 +58,14 @@ type (
 
 	CircleFullSpecification struct {
 		repo IUserRepository
+	}
+
+	CircleGetRecommendResult struct {
+		circles []Circle
+	}
+
+	CircleRecommendSpecification struct {
+		executeDateTime time.Time
 	}
 )
 
@@ -104,7 +115,7 @@ func NewCircleApplicationService(circleFactory ICircleFactory, circleRepository 
 		circleRepository: circleRepository,
 		circleService:    circleService,
 		userRepository:   userRepository,
-		now:              now,
+		now:              time.Now(),
 	}
 }
 
@@ -166,6 +177,22 @@ func (cas *CircleApplicationService) Join(command CircleJoinCommand) bool {
 
 }
 
+func (cas *CircleApplicationService) GetRecommend() CircleGetRecommendResult {
+	recommendCircleSpec := NewCircleRecommendSpecification(cas.now)
+
+	circles, _ := cas.circleRepository.FindAll()
+	recommendCircles := []Circle{}
+	for _, circle := range circles {
+		if recommendCircleSpec.IsSatisfiedBy(circle) {
+			recommendCircles = append(recommendCircles, circle)
+		}
+		if len(recommendCircles) >= 10 {
+			break
+		}
+	}
+	return CircleGetRecommendResult{circles: recommendCircles}
+}
+
 func (c *Circle) Join(member User) bool {
 	if len(member.Name.V) == 0 {
 		return false
@@ -195,6 +222,10 @@ func NewCircleFullSpecification(repo IUserRepository) CircleFullSpecification {
 	return CircleFullSpecification{repo: repo}
 }
 
+func NewCircleRecommendSpecification(executeDateTime time.Time) CircleRecommendSpecification {
+	return CircleRecommendSpecification{executeDateTime: executeDateTime}
+}
+
 func (cfs *CircleFullSpecification) IsSatisfiedBy(circle Circle) bool {
 	owner, _ := cfs.repo.Find(circle.owner)
 	upperLimit := 30
@@ -203,4 +234,12 @@ func (cfs *CircleFullSpecification) IsSatisfiedBy(circle Circle) bool {
 	}
 
 	return circle.CountMembers() >= upperLimit
+}
+
+func (crs *CircleRecommendSpecification) IsSatisfiedBy(circle Circle) bool {
+	if circle.CountMembers() < 10 {
+		return false
+	}
+
+	return circle.created.Before(crs.executeDateTime.AddDate(0, -1, 0))
 }
