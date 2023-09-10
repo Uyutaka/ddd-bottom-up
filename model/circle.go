@@ -14,24 +14,24 @@ type (
 	}
 	// Aggregate Root
 	Circle struct {
-		id      CircleId
-		name    CircleName
-		owner   UserId
+		id      *CircleId
+		name    *CircleName
+		owner   *UserId
 		members []UserId
 		created time.Time
 	}
 
 	ICircleRepository interface {
-		Save(circle Circle) error
-		FindById(id CircleId) (Circle, error)
-		FindByName(name CircleName) (Circle, error)
+		Save(circle *Circle) error
+		FindById(id CircleId) (*Circle, error)
+		FindByName(name *CircleName) (Circle, error)
 		// ng because condition of searching circles is not in repository of domain model
 		// FindRecommended(time time.Time) ([]Circle, error)
 		FindAll() ([]Circle, error)
 	}
 
 	ICircleFactory interface {
-		Create(name CircleName, owner User) (Circle, error)
+		Create(name *CircleName, owner *User) (*Circle, error)
 	}
 
 	CircleService struct {
@@ -77,19 +77,19 @@ func NewCircleService(repo ICircleRepository) CircleService {
 	return CircleService{repo: repo}
 }
 
-func (s *CircleService) Exist(circle Circle) bool {
+func (s *CircleService) Exist(circle *Circle) bool {
 	duplicated, _ := s.repo.FindByName(circle.name)
 	return duplicated.name.V != ""
 }
 
-func NewCircle(id CircleId, name CircleName, owner UserId, users []UserId) (Circle, bool) {
-	if id.V == "" {
+func NewCircle(id *CircleId, name *CircleName, owner *UserId, users []UserId) (Circle, bool) {
+	if id == nil {
 		return Circle{}, false
 	}
-	if name.V == "" {
+	if name == nil {
 		return Circle{}, false
 	}
-	if owner.V == "" {
+	if owner == nil {
 		return Circle{}, false
 	}
 
@@ -125,13 +125,13 @@ func (cas *CircleApplicationService) Create(command CircleCreateCommand) bool {
 
 	// find owner's user id
 	ownerId, _ := NewUserId(command.userId)
-	owner, err := cas.userRepository.Find(ownerId)
+	owner, err := cas.userRepository.Find(&ownerId)
 	if err != nil {
 		return false
 	}
 
 	name, _ := NewCircleName(command.name)
-	circle, _ := cas.circleFactory.Create(name, owner)
+	circle, _ := cas.circleFactory.Create(&name, owner)
 
 	// check duplication
 	if cas.circleService.Exist(circle) {
@@ -148,7 +148,7 @@ func (cas *CircleApplicationService) Join(command CircleJoinCommand) bool {
 
 	memberId, _ := NewUserId(command.userId)
 
-	user, err := cas.userRepository.Find(memberId)
+	user, err := cas.userRepository.Find(&memberId)
 
 	if err != nil {
 		return false
@@ -193,8 +193,8 @@ func (cas *CircleApplicationService) GetRecommend() CircleGetRecommendResult {
 	return CircleGetRecommendResult{circles: recommendCircles}
 }
 
-func (c *Circle) Join(member User) bool {
-	if len(member.Name.V) == 0 {
+func (c *Circle) Join(member *User) bool {
+	if member == nil {
 		return false
 	}
 
@@ -226,7 +226,7 @@ func NewCircleRecommendSpecification(executeDateTime time.Time) CircleRecommendS
 	return CircleRecommendSpecification{executeDateTime: executeDateTime}
 }
 
-func (cfs *CircleFullSpecification) IsSatisfiedBy(circle Circle) bool {
+func (cfs *CircleFullSpecification) IsSatisfiedBy(circle *Circle) bool {
 	owner, _ := cfs.repo.Find(circle.owner)
 	upperLimit := 30
 	if owner.IsPremium() {

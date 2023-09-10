@@ -21,7 +21,7 @@ type (
 
 	IUserRepository interface {
 		Save(user User) error
-		Find(id UserId) (User, error)
+		Find(id *UserId) (*User, error)
 		Exists(user User) (bool, error)
 	}
 )
