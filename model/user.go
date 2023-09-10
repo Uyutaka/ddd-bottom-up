@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"math/rand"
 )
 
@@ -19,10 +20,34 @@ type (
 		Name UserName
 	}
 
+	UserService struct {
+		userRepository IUserRepository
+	}
+
+	UserApplicationService struct {
+		userService    UserService
+		userFactory    IUserFactory
+		userRepository IUserRepository
+	}
+
+	UserFactory struct{}
+
+	UserGetCommand struct {
+		userId string
+	}
+
+	UserGetResult struct {
+		user User
+	}
+
 	IUserRepository interface {
 		Save(user User) error
 		Find(id *UserId) (*User, error)
 		Exists(user User) (bool, error)
+	}
+
+	IUserFactory interface {
+		Create(id *UserId, name *UserName) (*User, error)
 	}
 )
 
@@ -74,6 +99,14 @@ func NewCircleName(v string) (CircleName, bool) {
 	return CircleName{V: v}, true
 }
 
+func NewUserService(userRepository IUserRepository) UserService {
+	return UserService{userRepository: userRepository}
+}
+
+func NewUserApplicationService(userService UserService, userFactory IUserFactory, userRepository IUserRepository) UserApplicationService {
+	return UserApplicationService{userService: userService, userFactory: userFactory, userRepository: userRepository}
+}
+
 func (u *User) ChangeUserName(name string) bool {
 
 	if len(name) == 0 {
@@ -90,4 +123,18 @@ func (u *User) ChangeUserName(name string) bool {
 
 func (u *User) IsPremium() bool {
 	return rand.Float32() < 0.5
+}
+
+func (uf *UserFactory) Create(id *UserId, name *UserName) (*User, error) {
+	return &User{Id: *id, Name: *name}, nil
+}
+
+func (uas *UserApplicationService) Get(command UserGetCommand) (*UserGetResult, error) {
+	id, _ := NewUserId(command.userId)
+	user, _ := uas.userRepository.Find(&id)
+	if user == nil {
+		return nil, errors.New("user not found")
+	}
+	result := UserGetResult{user: *user}
+	return &result, nil
 }
