@@ -2,7 +2,11 @@ package model
 
 import (
 	"errors"
-	"math/rand"
+)
+
+var (
+	USER_TYPE_PREMIUM = UserType{V: "premium"}
+	USER_TYPE_NORMAL  = UserType{V: "normal"}
 )
 
 type (
@@ -14,10 +18,15 @@ type (
 		V string
 	}
 
+	UserType struct {
+		V string
+	}
+
 	// Aggregate Root
 	User struct {
-		Id   UserId
-		Name UserName
+		Id    UserId
+		Name  UserName
+		UType UserType
 	}
 
 	UserService struct {
@@ -61,7 +70,8 @@ type (
 
 	IUserRepository interface {
 		Save(user User) error
-		Find(id *UserId) (*User, error)
+		FindById(id *UserId) (*User, error)
+		FindByName(name *UserName) (*User, error)
 		FindAll() (*[]User, error)
 		Exists(user User) bool
 		Delete(user User) error
@@ -91,12 +101,19 @@ func NewUserId(v string) (UserId, bool) {
 	return UserId{V: v}, true
 }
 
-func NewUser(id UserId, name UserName) (User, bool) {
+func NewUserType(v string) (UserType, bool) {
+	return UserType{V: v}, true
+}
+
+func NewUser(id UserId, name UserName, uType UserType) (User, bool) {
 	if len(id.V) == 0 {
 		return User{}, false
 	}
+	if len(name.V) == 0 {
+		return User{}, false
+	}
 
-	return User{Id: id}, true
+	return User{Id: id, Name: name, UType: uType}, true
 }
 
 func NewCircleId(v string) (CircleId, bool) {
@@ -128,22 +145,29 @@ func NewUserApplicationService(userService UserService, userFactory IUserFactory
 	return UserApplicationService{userService: userService, userFactory: userFactory, userRepository: userRepository}
 }
 
-func (u *User) ChangeUserName(name string) bool {
-
-	if len(name) == 0 {
+func (u *User) ChangeName(name *UserName) bool {
+	if name == nil {
 		return false
 	}
-	if len(name) < 3 {
-		return false
-	}
-
-	userName, _ := NewUserName(name)
-	u.Name = userName
+	u.Name = *name
 	return true
 }
 
+func (u *User) Upgrade() {
+	u.UType = USER_TYPE_PREMIUM
+}
+
+func (u *User) DownGrade() {
+	u.UType = USER_TYPE_NORMAL
+}
+
 func (u *User) IsPremium() bool {
-	return rand.Float32() < 0.5
+	return u.UType.V == "premium"
+}
+
+func (us *UserService) Exists(user *User) bool {
+	duplicatedUser, _ := us.userRepository.FindByName(&user.Name)
+	return duplicatedUser != nil
 }
 
 func (uf *UserFactory) Create(id *UserId, name *UserName) (*User, error) {
@@ -152,7 +176,7 @@ func (uf *UserFactory) Create(id *UserId, name *UserName) (*User, error) {
 
 func (uas *UserApplicationService) Get(command UserGetCommand) (*UserGetResult, error) {
 	id, _ := NewUserId(command.userId)
-	user, _ := uas.userRepository.Find(&id)
+	user, _ := uas.userRepository.FindById(&id)
 	if user == nil {
 		return nil, errors.New("user not found")
 	}
@@ -187,14 +211,14 @@ func (uas *UserApplicationService) Register(command UserRegisterCommand) (*UserR
 func (uas *UserApplicationService) Update(command UserUpdateCommand) error {
 	// starts tx
 	id, _ := NewUserId(command.id)
-	user, _ := uas.userRepository.Find(&id)
+	user, _ := uas.userRepository.FindById(&id)
 	if user == nil {
 		return errors.New("user not found")
 	}
 
 	if len(command.name) != 0 {
 		name, _ := NewUserName(command.name)
-		user.ChangeUserName(name.V)
+		user.ChangeName(&name)
 		if uas.userService.userRepository.Exists(*user) {
 			return errors.New("user already exists")
 		}
@@ -208,7 +232,7 @@ func (uas *UserApplicationService) Update(command UserUpdateCommand) error {
 func (uas *UserApplicationService) Delete(command UserDeleteCommand) error {
 	// starts tx
 	id, _ := NewUserId(command.id)
-	user, _ := uas.userRepository.Find(&id)
+	user, _ := uas.userRepository.FindById(&id)
 	if user == nil {
 		return errors.New("user not found")
 	}

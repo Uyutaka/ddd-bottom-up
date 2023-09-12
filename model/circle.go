@@ -125,7 +125,7 @@ func (cas *CircleApplicationService) Create(command CircleCreateCommand) bool {
 
 	// find owner's user id
 	ownerId, _ := NewUserId(command.userId)
-	owner, err := cas.userRepository.Find(&ownerId)
+	owner, err := cas.userRepository.FindById(&ownerId)
 	if err != nil {
 		return false
 	}
@@ -148,7 +148,7 @@ func (cas *CircleApplicationService) Join(command CircleJoinCommand) bool {
 
 	memberId, _ := NewUserId(command.userId)
 
-	user, err := cas.userRepository.Find(&memberId)
+	user, err := cas.userRepository.FindById(&memberId)
 
 	if err != nil {
 		return false
@@ -227,7 +227,7 @@ func NewCircleRecommendSpecification(executeDateTime time.Time) CircleRecommendS
 }
 
 func (cfs *CircleFullSpecification) IsSatisfiedBy(circle *Circle) bool {
-	owner, _ := cfs.repo.Find(circle.owner)
+	owner, _ := cfs.repo.FindById(circle.owner)
 	upperLimit := 30
 	if owner.IsPremium() {
 		upperLimit = 50
