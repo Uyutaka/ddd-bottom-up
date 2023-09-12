@@ -30,6 +30,13 @@ type (
 		userRepository IUserRepository
 	}
 
+	UserRegisterCommand struct {
+		name string
+	}
+	UserRegisterResult struct {
+		id UserId
+	}
+
 	UserFactory struct{}
 
 	UserGetCommand struct {
@@ -40,14 +47,28 @@ type (
 		user User
 	}
 
+	UserGetAllResult struct {
+		users []User
+	}
+	UserUpdateCommand struct {
+		id   string
+		name string
+	}
+
+	UserDeleteCommand struct {
+		id string
+	}
+
 	IUserRepository interface {
 		Save(user User) error
 		Find(id *UserId) (*User, error)
-		Exists(user User) (bool, error)
+		FindAll() (*[]User, error)
+		Exists(user User) bool
+		Delete(user User) error
 	}
 
 	IUserFactory interface {
-		Create(id *UserId, name *UserName) (*User, error)
+		Create(name *UserName) (*User, error)
 	}
 )
 
@@ -126,7 +147,7 @@ func (u *User) IsPremium() bool {
 }
 
 func (uf *UserFactory) Create(id *UserId, name *UserName) (*User, error) {
-	return &User{Id: *id, Name: *name}, nil
+	return &User{Name: *name}, nil
 }
 
 func (uas *UserApplicationService) Get(command UserGetCommand) (*UserGetResult, error) {
@@ -137,4 +158,66 @@ func (uas *UserApplicationService) Get(command UserGetCommand) (*UserGetResult, 
 	}
 	result := UserGetResult{user: *user}
 	return &result, nil
+}
+
+func (uas *UserApplicationService) GetAll() (*UserGetAllResult, error) {
+	users, errors := uas.userRepository.FindAll()
+	if errors != nil {
+		return nil, errors
+	}
+	result := UserGetAllResult{users: *users}
+	return &result, nil
+}
+
+func (uas *UserApplicationService) Register(command UserRegisterCommand) (*UserRegisterResult, error) {
+
+	// starts tx
+	userName, _ := NewUserName(command.name)
+	user, _ := uas.userFactory.Create(&userName)
+	if uas.userRepository.Exists(*user) {
+		return nil, errors.New("user already exists")
+	}
+
+	uas.userRepository.Save(*user)
+	// ends tx
+
+	return &UserRegisterResult{id: user.Id}, nil
+}
+
+func (uas *UserApplicationService) Update(command UserUpdateCommand) error {
+	// starts tx
+	id, _ := NewUserId(command.id)
+	user, _ := uas.userRepository.Find(&id)
+	if user == nil {
+		return errors.New("user not found")
+	}
+
+	if len(command.name) != 0 {
+		name, _ := NewUserName(command.name)
+		user.ChangeUserName(name.V)
+		if uas.userService.userRepository.Exists(*user) {
+			return errors.New("user already exists")
+		}
+	}
+	uas.userRepository.Save(*user)
+
+	// ends tx
+	return nil
+}
+
+func (uas *UserApplicationService) Delete(command UserDeleteCommand) error {
+	// starts tx
+	id, _ := NewUserId(command.id)
+	user, _ := uas.userRepository.Find(&id)
+	if user == nil {
+		return errors.New("user not found")
+	}
+
+	err := uas.userRepository.Delete(*user)
+	if err != nil {
+		return errors.New("could not delete user")
+	}
+	// ends tx
+
+	return nil
 }
