@@ -80,6 +80,11 @@ type (
 	IUserFactory interface {
 		Create(name *UserName) (*User, error)
 	}
+
+	SliceUserRepository struct {
+		connectionInfo string
+		tmpUserStorage []User
+	}
 )
 
 func NewUserName(v string) (UserName, bool) {
@@ -165,6 +170,10 @@ func (u *User) IsPremium() bool {
 	return u.UType.V == "premium"
 }
 
+func (u *User) ToString() string {
+	return u.Id.V + " " + u.Name.V + " " + u.UType.V
+}
+
 func (us *UserService) Exists(user *User) bool {
 	duplicatedUser, _ := us.userRepository.FindByName(&user.Name)
 	return duplicatedUser != nil
@@ -244,4 +253,54 @@ func (uas *UserApplicationService) Delete(command UserDeleteCommand) error {
 	// ends tx
 
 	return nil
+}
+
+func NewSliceUserRepository(connectionInfo string) SliceUserRepository {
+	return SliceUserRepository{connectionInfo: connectionInfo, tmpUserStorage: []User{}}
+}
+
+func (sur *SliceUserRepository) Save(user User) error {
+	sur.tmpUserStorage = append(sur.tmpUserStorage, user)
+	return nil
+}
+
+func (sur *SliceUserRepository) FindById(id *UserId) (*User, error) {
+	for _, user := range sur.tmpUserStorage {
+		if user.Id.V == id.V {
+			return &user, nil
+		}
+	}
+	return nil, nil
+}
+
+func (sur *SliceUserRepository) FindByName(name *UserName) (*User, error) {
+	for _, user := range sur.tmpUserStorage {
+		if user.Name.V == name.V {
+			return &user, nil
+		}
+	}
+	return nil, nil
+}
+
+func (sur *SliceUserRepository) FindAll() (*[]User, error) {
+	return &sur.tmpUserStorage, nil
+}
+
+func (sur *SliceUserRepository) Exists(user User) bool {
+	for _, u := range sur.tmpUserStorage {
+		if u.Id.V == user.Id.V {
+			return true
+		}
+	}
+	return false
+}
+
+func (sur *SliceUserRepository) Delete(user User) error {
+	for i, u := range sur.tmpUserStorage {
+		if u.Id.V == user.Id.V {
+			sur.tmpUserStorage = append(sur.tmpUserStorage[:i], sur.tmpUserStorage[i+1:]...)
+			return nil
+		}
+	}
+	return errors.New("user not found")
 }
