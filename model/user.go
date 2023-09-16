@@ -40,13 +40,12 @@ type (
 	}
 
 	UserRegisterCommand struct {
+		id   string
 		name string
 	}
 	UserRegisterResult struct {
 		id UserId
 	}
-
-	UserFactory struct{}
 
 	UserGetCommand struct {
 		userId string
@@ -57,7 +56,7 @@ type (
 	}
 
 	UserGetAllResult struct {
-		users []User
+		Users []User
 	}
 	UserUpdateCommand struct {
 		id   string
@@ -78,8 +77,10 @@ type (
 	}
 
 	IUserFactory interface {
-		Create(name *UserName) (*User, error)
+		Create(id *UserId, name *UserName) (*User, error)
 	}
+
+	UserFactory struct{}
 
 	SliceUserRepository struct {
 		connectionInfo string
@@ -198,15 +199,16 @@ func (uas *UserApplicationService) GetAll() (*UserGetAllResult, error) {
 	if errors != nil {
 		return nil, errors
 	}
-	result := UserGetAllResult{users: *users}
+	result := UserGetAllResult{Users: *users}
 	return &result, nil
 }
 
 func (uas *UserApplicationService) Register(command UserRegisterCommand) (*UserRegisterResult, error) {
 
 	// starts tx
+	userId, _ := NewUserId(command.id)
 	userName, _ := NewUserName(command.name)
-	user, _ := uas.userFactory.Create(&userName)
+	user, _ := uas.userFactory.Create(&userId, &userName)
 	if uas.userRepository.Exists(*user) {
 		return nil, errors.New("user already exists")
 	}
@@ -256,7 +258,11 @@ func (uas *UserApplicationService) Delete(command UserDeleteCommand) error {
 }
 
 func NewSliceUserRepository(connectionInfo string) SliceUserRepository {
-	return SliceUserRepository{connectionInfo: connectionInfo, tmpUserStorage: []User{}}
+	initialUsers := []User{
+		User{Id: UserId{V: "1"}, Name: UserName{V: "user1"}, UType: USER_TYPE_NORMAL},
+		User{Id: UserId{V: "2"}, Name: UserName{V: "user2"}, UType: USER_TYPE_PREMIUM},
+	}
+	return SliceUserRepository{connectionInfo: connectionInfo, tmpUserStorage: initialUsers}
 }
 
 func (sur *SliceUserRepository) Save(user User) error {
