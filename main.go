@@ -32,5 +32,35 @@ func main() {
 
 		return c.String(http.StatusOK, output)
 	})
+
+	e.GET("/:id", func(c echo.Context) error {
+		id := c.Param("id")
+		command := model.UserGetCommand{UserId: id}
+
+		result, err := userApplicationService.Get(command)
+		if err != nil {
+			return c.String(http.StatusOK, err.Error())
+		}
+		response := model.NewUserResponseModel(result.User)
+		if response == nil {
+			return c.String(http.StatusOK, "error")
+		}
+		output := response.Id + " " + response.Name
+		return c.String(http.StatusOK, output)
+	})
+
+	e.POST("/", func(c echo.Context) error {
+		// curl -X POST --data-urlencode 'name=xxxx' localhost:1323
+		command := model.UserRegisterCommand{Name: c.FormValue("name")}
+
+		// BUG: result.Id is invalid
+		result, err := userApplicationService.Register(command)
+		if err != nil {
+			return c.String(http.StatusOK, err.Error())
+		}
+		return c.String(http.StatusOK, "userId: "+result.Id+" created!")
+
+	})
+
 	e.Logger.Fatal(e.Start(":1323"))
 }

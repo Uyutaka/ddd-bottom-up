@@ -40,19 +40,19 @@ type (
 	}
 
 	UserRegisterCommand struct {
-		id   string
-		name string
+		Name string
 	}
+
 	UserRegisterResult struct {
-		id UserId
+		Id string
 	}
 
 	UserGetCommand struct {
-		userId string
+		UserId string
 	}
 
 	UserGetResult struct {
-		user User
+		User User
 	}
 
 	UserGetAllResult struct {
@@ -77,7 +77,7 @@ type (
 	}
 
 	IUserFactory interface {
-		Create(id *UserId, name *UserName) (*User, error)
+		Create(name *UserName) (*User, error)
 	}
 
 	UserFactory struct{}
@@ -85,6 +85,15 @@ type (
 	SliceUserRepository struct {
 		connectionInfo string
 		tmpUserStorage []User
+	}
+
+	UserResponseModel struct {
+		Id   string
+		Name string
+	}
+
+	UserPostRequestModel struct {
+		Name string
 	}
 )
 
@@ -180,17 +189,17 @@ func (us *UserService) Exists(user *User) bool {
 	return duplicatedUser != nil
 }
 
-func (uf *UserFactory) Create(id *UserId, name *UserName) (*User, error) {
+func (uf *UserFactory) Create(name *UserName) (*User, error) {
 	return &User{Name: *name}, nil
 }
 
 func (uas *UserApplicationService) Get(command UserGetCommand) (*UserGetResult, error) {
-	id, _ := NewUserId(command.userId)
+	id, _ := NewUserId(command.UserId)
 	user, _ := uas.userRepository.FindById(&id)
 	if user == nil {
 		return nil, errors.New("user not found")
 	}
-	result := UserGetResult{user: *user}
+	result := UserGetResult{User: *user}
 	return &result, nil
 }
 
@@ -206,9 +215,8 @@ func (uas *UserApplicationService) GetAll() (*UserGetAllResult, error) {
 func (uas *UserApplicationService) Register(command UserRegisterCommand) (*UserRegisterResult, error) {
 
 	// starts tx
-	userId, _ := NewUserId(command.id)
-	userName, _ := NewUserName(command.name)
-	user, _ := uas.userFactory.Create(&userId, &userName)
+	userName, _ := NewUserName(command.Name)
+	user, _ := uas.userFactory.Create(&userName)
 	if uas.userRepository.Exists(*user) {
 		return nil, errors.New("user already exists")
 	}
@@ -216,7 +224,7 @@ func (uas *UserApplicationService) Register(command UserRegisterCommand) (*UserR
 	uas.userRepository.Save(*user)
 	// ends tx
 
-	return &UserRegisterResult{id: user.Id}, nil
+	return &UserRegisterResult{Id: user.Id.V}, nil
 }
 
 func (uas *UserApplicationService) Update(command UserUpdateCommand) error {
@@ -309,4 +317,8 @@ func (sur *SliceUserRepository) Delete(user User) error {
 		}
 	}
 	return errors.New("user not found")
+}
+
+func NewUserResponseModel(user User) *UserResponseModel {
+	return &UserResponseModel{Id: user.Id.V, Name: user.Name.V}
 }
