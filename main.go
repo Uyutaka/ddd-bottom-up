@@ -11,7 +11,7 @@ import (
 func main() {
 	repo := model.NewSliceUserRepository("test")
 	userService := model.NewUserService(&repo)
-	userFactory := model.UserFactory{}
+	userFactory := model.NewUserFactory(*(repo.Storage))
 	userRepository := &repo
 	userApplicationService := model.NewUserApplicationService(userService, &userFactory, userRepository)
 
@@ -53,7 +53,6 @@ func main() {
 		// curl -X POST --data-urlencode 'name=xxxx' localhost:1323
 		command := model.UserRegisterCommand{Name: c.FormValue("name")}
 
-		// BUG: result.Id is invalid
 		result, err := userApplicationService.Register(command)
 		if err != nil {
 			return c.String(http.StatusOK, err.Error())

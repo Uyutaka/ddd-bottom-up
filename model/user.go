@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"strconv"
 )
 
 var (
@@ -80,11 +81,13 @@ type (
 		Create(name *UserName) (*User, error)
 	}
 
-	UserFactory struct{}
+	UserFactory struct {
+		storage *TmpUserStorage
+	}
 
 	SliceUserRepository struct {
 		connectionInfo string
-		tmpUserStorage []User
+		Storage        *TmpUserStorage
 	}
 
 	UserResponseModel struct {
@@ -94,6 +97,10 @@ type (
 
 	UserPostRequestModel struct {
 		Name string
+	}
+
+	TmpUserStorage struct {
+		data []User
 	}
 )
 
@@ -160,6 +167,10 @@ func NewUserApplicationService(userService UserService, userFactory IUserFactory
 	return UserApplicationService{userService: userService, userFactory: userFactory, userRepository: userRepository}
 }
 
+func NewUserFactory(storage TmpUserStorage) UserFactory {
+	return UserFactory{storage: &storage}
+}
+
 func (u *User) ChangeName(name *UserName) bool {
 	if name == nil {
 		return false
@@ -190,7 +201,23 @@ func (us *UserService) Exists(user *User) bool {
 }
 
 func (uf *UserFactory) Create(name *UserName) (*User, error) {
-	return &User{Name: *name}, nil
+	id := uf.assignId()
+	userId, _ := NewUserId(id)
+	return &User{Name: *name, Id: userId, UType: USER_TYPE_NORMAL}, nil
+}
+
+func (uf *UserFactory) assignId() string {
+	max := 0
+	for _, user := range uf.storage.data {
+		intId, err := strconv.Atoi(user.Id.V)
+		if err != nil {
+			break
+		}
+		if max < intId {
+			max = intId
+		}
+	}
+	return strconv.Itoa(max + 1)
 }
 
 func (uas *UserApplicationService) Get(command UserGetCommand) (*UserGetResult, error) {
@@ -217,6 +244,7 @@ func (uas *UserApplicationService) Register(command UserRegisterCommand) (*UserR
 	// starts tx
 	userName, _ := NewUserName(command.Name)
 	user, _ := uas.userFactory.Create(&userName)
+	// BUG: in Exists()
 	if uas.userRepository.Exists(*user) {
 		return nil, errors.New("user already exists")
 	}
@@ -266,20 +294,20 @@ func (uas *UserApplicationService) Delete(command UserDeleteCommand) error {
 }
 
 func NewSliceUserRepository(connectionInfo string) SliceUserRepository {
-	initialUsers := []User{
+	storage := TmpUserStorage{data: []User{
 		User{Id: UserId{V: "1"}, Name: UserName{V: "user1"}, UType: USER_TYPE_NORMAL},
 		User{Id: UserId{V: "2"}, Name: UserName{V: "user2"}, UType: USER_TYPE_PREMIUM},
-	}
-	return SliceUserRepository{connectionInfo: connectionInfo, tmpUserStorage: initialUsers}
+	}}
+	return SliceUserRepository{connectionInfo: connectionInfo, Storage: &storage}
 }
 
 func (sur *SliceUserRepository) Save(user User) error {
-	sur.tmpUserStorage = append(sur.tmpUserStorage, user)
+	sur.Storage.Insert(user)
 	return nil
 }
 
 func (sur *SliceUserRepository) FindById(id *UserId) (*User, error) {
-	for _, user := range sur.tmpUserStorage {
+	for _, user := range sur.Storage.data {
 		if user.Id.V == id.V {
 			return &user, nil
 		}
@@ -288,7 +316,7 @@ func (sur *SliceUserRepository) FindById(id *UserId) (*User, error) {
 }
 
 func (sur *SliceUserRepository) FindByName(name *UserName) (*User, error) {
-	for _, user := range sur.tmpUserStorage {
+	for _, user := range sur.Storage.data {
 		if user.Name.V == name.V {
 			return &user, nil
 		}
@@ -297,11 +325,11 @@ func (sur *SliceUserRepository) FindByName(name *UserName) (*User, error) {
 }
 
 func (sur *SliceUserRepository) FindAll() (*[]User, error) {
-	return &sur.tmpUserStorage, nil
+	return &sur.Storage.data, nil
 }
 
 func (sur *SliceUserRepository) Exists(user User) bool {
-	for _, u := range sur.tmpUserStorage {
+	for _, u := range sur.Storage.data {
 		if u.Id.V == user.Id.V {
 			return true
 		}
@@ -310,15 +338,20 @@ func (sur *SliceUserRepository) Exists(user User) bool {
 }
 
 func (sur *SliceUserRepository) Delete(user User) error {
-	for i, u := range sur.tmpUserStorage {
-		if u.Id.V == user.Id.V {
-			sur.tmpUserStorage = append(sur.tmpUserStorage[:i], sur.tmpUserStorage[i+1:]...)
-			return nil
-		}
-	}
-	return errors.New("user not found")
+	panic("not implemented")
+	// for i, u := range sur.storage.data {
+	// 	if u.Id.V == user.Id.V {
+	// 		sur.tmpUserStorage = append(sur.tmpUserStorage[:i], sur.tmpUserStorage[i+1:]...)
+	// 		return nil
+	// 	}
+	// }
+	// return errors.New("user not found")
 }
 
 func NewUserResponseModel(user User) *UserResponseModel {
 	return &UserResponseModel{Id: user.Id.V, Name: user.Name.V}
+}
+
+func (tus *TmpUserStorage) Insert(user User) {
+	tus.data = append(tus.data, user)
 }
