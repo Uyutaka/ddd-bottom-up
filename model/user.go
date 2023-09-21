@@ -167,8 +167,8 @@ func NewUserApplicationService(userService UserService, userFactory IUserFactory
 	return UserApplicationService{userService: userService, userFactory: userFactory, userRepository: userRepository}
 }
 
-func NewUserFactory(storage TmpUserStorage) UserFactory {
-	return UserFactory{storage: &storage}
+func NewUserFactory(storage *TmpUserStorage) UserFactory {
+	return UserFactory{storage: storage}
 }
 
 func (u *User) ChangeName(name *UserName) bool {
@@ -244,7 +244,6 @@ func (uas *UserApplicationService) Register(command UserRegisterCommand) (*UserR
 	// starts tx
 	userName, _ := NewUserName(command.Name)
 	user, _ := uas.userFactory.Create(&userName)
-	// BUG: in Exists()
 	if uas.userRepository.Exists(*user) {
 		return nil, errors.New("user already exists")
 	}

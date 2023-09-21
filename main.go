@@ -11,7 +11,7 @@ import (
 func main() {
 	repo := model.NewSliceUserRepository("test")
 	userService := model.NewUserService(&repo)
-	userFactory := model.NewUserFactory(*(repo.Storage))
+	userFactory := model.NewUserFactory(repo.Storage)
 	userRepository := &repo
 	userApplicationService := model.NewUserApplicationService(userService, &userFactory, userRepository)
 
