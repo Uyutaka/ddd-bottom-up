@@ -17,6 +17,7 @@ func main() {
 
 	e := echo.New()
 	e.GET("/", func(c echo.Context) error {
+		// curl localhost:1323
 		result, err := userApplicationService.GetAll()
 		if err != nil {
 			fmt.Println(err)
@@ -34,6 +35,7 @@ func main() {
 	})
 
 	e.GET("/:id", func(c echo.Context) error {
+		// curl localhost:1323/1
 		id := c.Param("id")
 		command := model.UserGetCommand{UserId: id}
 
@@ -71,5 +73,17 @@ func main() {
 		}
 		return c.String(http.StatusOK, "userId: "+id+" updated!")
 	})
+
+	e.DELETE("/:id", func(c echo.Context) error {
+		// curl -X DELETE localhost:1323/1
+		id := c.Param("id")
+		command := model.UserDeleteCommand{Id: id}
+		err := userApplicationService.Delete(command)
+		if err != nil {
+			return c.String(http.StatusOK, err.Error())
+		}
+		return c.String(http.StatusOK, "userId: "+id+" deleted!")
+	})
+
 	e.Logger.Fatal(e.Start(":1323"))
 }

@@ -65,7 +65,7 @@ type (
 	}
 
 	UserDeleteCommand struct {
-		id string
+		Id string
 	}
 
 	IUserRepository interface {
@@ -276,7 +276,7 @@ func (uas *UserApplicationService) Update(command UserUpdateCommand) error {
 
 func (uas *UserApplicationService) Delete(command UserDeleteCommand) error {
 	// starts tx
-	id, _ := NewUserId(command.id)
+	id, _ := NewUserId(command.Id)
 	user, _ := uas.userRepository.FindById(&id)
 	if user == nil {
 		return errors.New("user not found")
@@ -340,14 +340,13 @@ func (sur *SliceUserRepository) Exists(user User) bool {
 }
 
 func (sur *SliceUserRepository) Delete(user User) error {
-	panic("not implemented")
-	// for i, u := range sur.storage.data {
-	// 	if u.Id.V == user.Id.V {
-	// 		sur.tmpUserStorage = append(sur.tmpUserStorage[:i], sur.tmpUserStorage[i+1:]...)
-	// 		return nil
-	// 	}
-	// }
-	// return errors.New("user not found")
+	for i, u := range sur.Storage.data {
+		if u.Id.V == user.Id.V {
+			sur.Storage.data = append(sur.Storage.data[:i], sur.Storage.data[i+1:]...)
+			return nil
+		}
+	}
+	return errors.New("user not found")
 }
 
 func NewUserResponseModel(user User) *UserResponseModel {
