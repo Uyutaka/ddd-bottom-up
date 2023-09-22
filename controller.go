@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo"
+	"uyutaka.com/ddd-bottom-up/application"
 	"uyutaka.com/ddd-bottom-up/model"
 )
 
@@ -27,7 +28,7 @@ func getUsers(c echo.Context) error {
 
 func getUser(c echo.Context) error {
 	id := c.Param("id")
-	command := model.UserGetCommand{UserId: id}
+	command := application.UserGetCommand{UserId: id}
 
 	result, err := userApplicationService.Get(command)
 	if err != nil {
@@ -42,7 +43,7 @@ func getUser(c echo.Context) error {
 }
 
 func createUser(c echo.Context) error {
-	command := model.UserRegisterCommand{Name: c.FormValue("name")}
+	command := application.UserRegisterCommand{Name: c.FormValue("name")}
 
 	result, err := userApplicationService.Register(command)
 	if err != nil {
@@ -53,7 +54,7 @@ func createUser(c echo.Context) error {
 
 func updateUser(c echo.Context) error {
 	id := c.Param("id")
-	command := model.UserUpdateCommand{Id: id, Name: c.FormValue("name")}
+	command := application.UserUpdateCommand{Id: id, Name: c.FormValue("name")}
 	err := userApplicationService.Update(command)
 	if err != nil {
 		return c.String(http.StatusOK, err.Error())
@@ -63,7 +64,7 @@ func updateUser(c echo.Context) error {
 
 func deleteUser(c echo.Context) error {
 	id := c.Param("id")
-	command := model.UserDeleteCommand{Id: id}
+	command := application.UserDeleteCommand{Id: id}
 	err := userApplicationService.Delete(command)
 	if err != nil {
 		return c.String(http.StatusOK, err.Error())

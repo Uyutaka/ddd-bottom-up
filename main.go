@@ -2,11 +2,12 @@ package main
 
 import (
 	"github.com/labstack/echo"
+	"uyutaka.com/ddd-bottom-up/application"
 	"uyutaka.com/ddd-bottom-up/model"
 )
 
 var (
-	userApplicationService model.UserApplicationService
+	userApplicationService application.UserApplicationService
 )
 
 func main() {
@@ -14,7 +15,7 @@ func main() {
 	userService := model.NewUserService(&repo)
 	userFactory := model.NewUserFactory(repo.Storage)
 	userRepository := &repo
-	userApplicationService = model.NewUserApplicationService(userService, &userFactory, userRepository)
+	userApplicationService = application.NewUserApplicationService(userService, &userFactory, userRepository)
 
 	e := echo.New()
 
