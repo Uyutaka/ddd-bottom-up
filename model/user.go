@@ -60,8 +60,8 @@ type (
 		Users []User
 	}
 	UserUpdateCommand struct {
-		id   string
-		name string
+		Id   string
+		Name string
 	}
 
 	UserDeleteCommand struct {
@@ -256,18 +256,17 @@ func (uas *UserApplicationService) Register(command UserRegisterCommand) (*UserR
 
 func (uas *UserApplicationService) Update(command UserUpdateCommand) error {
 	// starts tx
-	id, _ := NewUserId(command.id)
+	id, _ := NewUserId(command.Id)
 	user, _ := uas.userRepository.FindById(&id)
 	if user == nil {
 		return errors.New("user not found")
 	}
 
-	if len(command.name) != 0 {
-		name, _ := NewUserName(command.name)
+	if len(command.Name) != 0 {
+		name, _ := NewUserName(command.Name)
 		user.ChangeName(&name)
-		if uas.userService.userRepository.Exists(*user) {
-			return errors.New("user already exists")
-		}
+	} else {
+		return errors.New("name is empty")
 	}
 	uas.userRepository.Save(*user)
 
@@ -301,7 +300,11 @@ func NewSliceUserRepository(connectionInfo string) SliceUserRepository {
 }
 
 func (sur *SliceUserRepository) Save(user User) error {
-	sur.Storage.Insert(user)
+	if sur.Exists(user) {
+		sur.Storage.Update(user)
+	} else {
+		sur.Storage.Insert(user)
+	}
 	return nil
 }
 
@@ -353,4 +356,13 @@ func NewUserResponseModel(user User) *UserResponseModel {
 
 func (tus *TmpUserStorage) Insert(user User) {
 	tus.data = append(tus.data, user)
+}
+
+func (tus *TmpUserStorage) Update(user User) {
+	for i, u := range tus.data {
+		if u.Id.V == user.Id.V {
+			tus.data[i] = user
+			return
+		}
+	}
 }

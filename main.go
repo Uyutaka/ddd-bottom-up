@@ -61,5 +61,15 @@ func main() {
 
 	})
 
+	e.PUT("/:id", func(c echo.Context) error {
+		// curl -X PUT --data-urlencode 'name=updated!' localhost:1323/1
+		id := c.Param("id")
+		command := model.UserUpdateCommand{Id: id, Name: c.FormValue("name")}
+		err := userApplicationService.Update(command)
+		if err != nil {
+			return c.String(http.StatusOK, err.Error())
+		}
+		return c.String(http.StatusOK, "userId: "+id+" updated!")
+	})
 	e.Logger.Fatal(e.Start(":1323"))
 }
