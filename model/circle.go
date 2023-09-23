@@ -243,3 +243,24 @@ func (crs *CircleRecommendSpecification) IsSatisfiedBy(circle Circle) bool {
 
 	return circle.created.Before(crs.executeDateTime.AddDate(0, -1, 0))
 }
+
+func NewCircleId(v string) (CircleId, bool) {
+	if len(v) == 0 {
+		return CircleId{}, false
+	}
+	return CircleId{V: v}, true
+}
+
+func NewCircleName(v string) (CircleName, bool) {
+	if len(v) == 0 {
+		return CircleName{}, false
+	}
+	if len(v) < 3 {
+		return CircleName{}, false
+	}
+	if len(v) > 20 {
+		return CircleName{}, false
+	}
+
+	return CircleName{V: v}, true
+}

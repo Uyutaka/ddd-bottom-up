@@ -86,27 +86,6 @@ func NewUser(id UserId, name UserName, uType UserType) (User, bool) {
 	return User{Id: id, Name: name, UType: uType}, true
 }
 
-func NewCircleId(v string) (CircleId, bool) {
-	if len(v) == 0 {
-		return CircleId{}, false
-	}
-	return CircleId{V: v}, true
-}
-
-func NewCircleName(v string) (CircleName, bool) {
-	if len(v) == 0 {
-		return CircleName{}, false
-	}
-	if len(v) < 3 {
-		return CircleName{}, false
-	}
-	if len(v) > 20 {
-		return CircleName{}, false
-	}
-
-	return CircleName{V: v}, true
-}
-
 func (u *User) ChangeName(name *UserName) bool {
 	if name == nil {
 		return false
