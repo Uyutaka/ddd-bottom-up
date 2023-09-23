@@ -1,10 +1,5 @@
 package model
 
-import (
-	"errors"
-	"strconv"
-)
-
 var (
 	USER_TYPE_PREMIUM = UserType{V: "premium"}
 	USER_TYPE_NORMAL  = UserType{V: "normal"}
@@ -43,15 +38,6 @@ type (
 		Create(name *UserName) (*User, error)
 	}
 
-	UserFactory struct {
-		storage *TmpUserStorage
-	}
-
-	SliceUserRepository struct {
-		connectionInfo string
-		Storage        *TmpUserStorage
-	}
-
 	UserResponseModel struct {
 		Id   string
 		Name string
@@ -61,8 +47,8 @@ type (
 		Name string
 	}
 
-	TmpUserStorage struct {
-		data []User
+	UserService struct {
+		userRepository IUserRepository
 	}
 )
 
@@ -121,10 +107,6 @@ func NewCircleName(v string) (CircleName, bool) {
 	return CircleName{V: v}, true
 }
 
-func NewUserFactory(storage *TmpUserStorage) UserFactory {
-	return UserFactory{storage: storage}
-}
-
 func (u *User) ChangeName(name *UserName) bool {
 	if name == nil {
 		return false
@@ -149,97 +131,15 @@ func (u *User) ToString() string {
 	return u.Id.V + " " + u.Name.V + " " + u.UType.V
 }
 
-func (uf *UserFactory) Create(name *UserName) (*User, error) {
-	id := uf.assignId()
-	userId, _ := NewUserId(id)
-	return &User{Name: *name, Id: userId, UType: USER_TYPE_NORMAL}, nil
-}
-
-func (uf *UserFactory) assignId() string {
-	max := 0
-	for _, user := range uf.storage.data {
-		intId, err := strconv.Atoi(user.Id.V)
-		if err != nil {
-			break
-		}
-		if max < intId {
-			max = intId
-		}
-	}
-	return strconv.Itoa(max + 1)
-}
-
-func NewSliceUserRepository(connectionInfo string) SliceUserRepository {
-	storage := TmpUserStorage{data: []User{
-		User{Id: UserId{V: "1"}, Name: UserName{V: "user1"}, UType: USER_TYPE_NORMAL},
-		User{Id: UserId{V: "2"}, Name: UserName{V: "user2"}, UType: USER_TYPE_PREMIUM},
-	}}
-	return SliceUserRepository{connectionInfo: connectionInfo, Storage: &storage}
-}
-
-func (sur *SliceUserRepository) Save(user User) error {
-	if sur.Exists(user) {
-		sur.Storage.Update(user)
-	} else {
-		sur.Storage.Insert(user)
-	}
-	return nil
-}
-
-func (sur *SliceUserRepository) FindById(id *UserId) (*User, error) {
-	for _, user := range sur.Storage.data {
-		if user.Id.V == id.V {
-			return &user, nil
-		}
-	}
-	return nil, nil
-}
-
-func (sur *SliceUserRepository) FindByName(name *UserName) (*User, error) {
-	for _, user := range sur.Storage.data {
-		if user.Name.V == name.V {
-			return &user, nil
-		}
-	}
-	return nil, nil
-}
-
-func (sur *SliceUserRepository) FindAll() (*[]User, error) {
-	return &sur.Storage.data, nil
-}
-
-func (sur *SliceUserRepository) Exists(user User) bool {
-	for _, u := range sur.Storage.data {
-		if u.Id.V == user.Id.V {
-			return true
-		}
-	}
-	return false
-}
-
-func (sur *SliceUserRepository) Delete(user User) error {
-	for i, u := range sur.Storage.data {
-		if u.Id.V == user.Id.V {
-			sur.Storage.data = append(sur.Storage.data[:i], sur.Storage.data[i+1:]...)
-			return nil
-		}
-	}
-	return errors.New("user not found")
-}
-
 func NewUserResponseModel(user User) *UserResponseModel {
 	return &UserResponseModel{Id: user.Id.V, Name: user.Name.V}
 }
 
-func (tus *TmpUserStorage) Insert(user User) {
-	tus.data = append(tus.data, user)
+func NewUserService(userRepository IUserRepository) UserService {
+	return UserService{userRepository: userRepository}
 }
 
-func (tus *TmpUserStorage) Update(user User) {
-	for i, u := range tus.data {
-		if u.Id.V == user.Id.V {
-			tus.data[i] = user
-			return
-		}
-	}
+func (us *UserService) Exists(user *User) bool {
+	duplicatedUser, _ := us.userRepository.FindByName(&user.Name)
+	return duplicatedUser != nil
 }

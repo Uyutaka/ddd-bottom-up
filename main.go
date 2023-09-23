@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/labstack/echo"
+	inMemoryInfrastructure "uyutaka.com/ddd-bottom-up/InMemoryInfrastructure"
 	"uyutaka.com/ddd-bottom-up/application"
 	"uyutaka.com/ddd-bottom-up/model"
 )
@@ -11,9 +12,10 @@ var (
 )
 
 func main() {
-	repo := model.NewSliceUserRepository("test")
+	repo := inMemoryInfrastructure.NewSliceUserRepository("test")
 	userService := model.NewUserService(&repo)
-	userFactory := model.NewUserFactory(repo.Storage)
+	// TODO use DI
+	userFactory := inMemoryInfrastructure.NewUserFactory(repo.Storage)
 	userRepository := &repo
 	userApplicationService = application.NewUserApplicationService(userService, &userFactory, userRepository)
 
