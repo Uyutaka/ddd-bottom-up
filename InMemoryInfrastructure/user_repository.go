@@ -11,17 +11,16 @@ type (
 		data []model.User
 	}
 	SliceUserRepository struct {
-		connectionInfo string
-		Storage        *TmpUserStorage
+		Storage *TmpUserStorage
 	}
 )
 
-func NewSliceUserRepository(connectionInfo string) SliceUserRepository {
+func NewSliceUserRepository() SliceUserRepository {
 	storage := TmpUserStorage{data: []model.User{
 		{Id: model.UserId{V: "1"}, Name: model.UserName{V: "user1"}, UType: model.USER_TYPE_NORMAL},
 		{Id: model.UserId{V: "2"}, Name: model.UserName{V: "user2"}, UType: model.USER_TYPE_PREMIUM},
 	}}
-	return SliceUserRepository{connectionInfo: connectionInfo, Storage: &storage}
+	return SliceUserRepository{Storage: &storage}
 }
 
 func (sur *SliceUserRepository) Save(user model.User) error {

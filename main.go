@@ -12,7 +12,7 @@ var (
 )
 
 func main() {
-	repo := inMemoryInfrastructure.NewSliceUserRepository("test")
+	repo := inMemoryInfrastructure.NewSliceUserRepository()
 	userService := model.NewUserService(&repo)
 	// TODO use DI
 	userFactory := inMemoryInfrastructure.NewUserFactory(repo.Storage)
